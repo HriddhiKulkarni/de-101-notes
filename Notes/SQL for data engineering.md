@@ -1,0 +1,1 @@
+Window functions, CTEs, aggregations
