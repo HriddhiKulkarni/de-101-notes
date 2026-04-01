@@ -19,6 +19,7 @@
 
 **How does a SQL engine run a query?**
 To a human, SQL reads from top to bottom. To the SQL Engine, it executes in a specific logical order to filter data as early as possible.<br/>
+
 🏎️ The SQL Execution Order<br/>
 
 FROM / JOIN | 📁 The Source | The engine identifies which tables to grab and joins them into one big dataset.<br/>
@@ -110,9 +111,9 @@ Top N: Change WHERE latest_rank = 1 to WHERE latest_rank <= 5 to get the top 5 r
 
 Cleanliness: It keeps your logic separated—Step 1 identifies the order, Step 2 picks the winner.
 
-🏆 The Top 5 Window Functions
+**🏆 The Top 5 Window Functions**
 
-ROW_NUMBER() | 🆔 The Unique Identifier
+**ROW_NUMBER()** | 🆔 The Unique Identifier
 
 What it does: Assigns a unique, sequential integer to rows (1, 2, 3, 4...).
 
@@ -120,7 +121,7 @@ Engineer Use Case: Deduplication. Use it to find the "newest" version of a recor
 
 Pattern: ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC)
 
-RANK() / DENSE_RANK() | 🏅 The Medalist
+**RANK() / DENSE_RANK()** | 🏅 The Medalist
 
 What it does: Assigns ranks, but handles "ties" differently. RANK skips numbers after a tie (1, 2, 2, 4); DENSE_RANK does not (1, 2, 2, 3).
 
@@ -128,7 +129,7 @@ Engineer Use Case: Top N Analysis. Identifying the top 3 selling products in eve
 
 Pattern: DENSE_RANK() OVER (PARTITION BY category ORDER BY sales DESC)
 
-LAG() / LEAD() | ⏪⏩ The Time Traveler
+**LAG() / LEAD()** | ⏪⏩ The Time Traveler
 
 What it does: Accesses data from the row before (LAG) or the row after (LEAD) without a join.
 
@@ -136,7 +137,7 @@ Engineer Use Case: Period-over-Period Growth. Comparing this month’s revenue t
 
 Pattern: LAG(revenue) OVER (ORDER BY fiscal_month)
 
-SUM() / AVG() OVER | 📈 The Rolling Metric
+**SUM() / AVG() OVER** | 📈 The Rolling Metric
 
 What it does: Calculates a running total or moving average while keeping all individual rows visible.
 
@@ -144,13 +145,14 @@ Engineer Use Case: Cumulative Growth. Tracking "Total Sales to Date" or a "7-Day
 
 Pattern: SUM(daily_sales) OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 
-FIRST_VALUE() / LAST_VALUE() | 🏁 The Anchor
+**FIRST_VALUE() / LAST_VALUE()** | 🏁 The Anchor
 
 What it does: Grabs the very first or very last value in a specific window of data.
 
 Engineer Use Case: Attribution Modeling. Finding the very first touchpoint (ad click) that led a user to sign up, even if they clicked 20 other things later.
 
 Pattern: FIRST_VALUE(referral_source) OVER (PARTITION BY user_id ORDER BY click_time)
+
 
 Let's see how to use LAG() in this same CTE style to calculate month-over-month growth
 
@@ -192,7 +194,7 @@ Imagine a spreadsheet where you copy a value from Cell B2 and paste it into Cell
 | Feb	| 120	| 100	| +20% Growth |
 | Mar	| 150 |	120	| +25% Growth |
 
-🛠 Pro Tip: LEAD()
+**🛠 Pro Tip: LEAD()**
 
 If LAG() is the rearview mirror, LEAD() is the windshield. It does the exact same thing but looks at the next row instead of the previous one.
 
@@ -202,7 +204,7 @@ If an interviewer asks how to find the "difference between two rows," always sta
 
 We are going to find the top-selling product for each category and compare its sales to the previous month to see the growth—all in one clean, readable block.
 
-🐉 The "Boss Level" Pattern
+**🐉 The "Boss Level" Pattern**
 
 This query combines a CTE, Window Functions (RANK, LAG), Aggregations, and an Inner Join.
 
@@ -292,7 +294,27 @@ DE Reality Check: It makes maintenance easy. Need to delete data from 2018? Don'
 | **Speed** | INDEXING | CREATE INDEX | Speeding up lookups on a billion-row table. |
 | **Storage** | PARTITION | PARTITION BY | Splitting a massive table into monthly chunks. |
 
+**5 real-world queries covering the patterns that's used daily:**
 
+1. The "Deduplication" Pattern
+
+Data pipelines often ingest duplicate events due to network retries or upstream bugs. This query identifies and keeps only the most recent version of each record. 
+
+```
+WITH ranked_events AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY order_id 
+               ORDER BY updated_at DESC
+           ) as rn
+    FROM raw_orders
+)
+SELECT * 
+FROM ranked_events 
+WHERE rn = 1;
+```
+
+Explanation: ROW_NUMBER() assigns a sequence to each row within its "group" (PARTITION BY order_id). By ordering by a timestamp (updated_at DESC), the latest record always gets rn = 1. 
 
 <!-- Credits from: 
 https://www.google.com/, https://www.linkedin.com/posts/mukilanashokraj_dataengineering-sql-bigdata-activity-7430334953915281408-BykO#:~:text=2w,15. <br/>
