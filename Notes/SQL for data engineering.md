@@ -296,7 +296,7 @@ DE Reality Check: It makes maintenance easy. Need to delete data from 2018? Don'
 
 **5 real-world queries covering the patterns that's used daily:**
 
-1. The "Deduplication" Pattern
+**1. The "Deduplication" Pattern**
 
 Data pipelines often ingest duplicate events due to network retries or upstream bugs. This query identifies and keeps only the most recent version of each record. 
 
@@ -314,7 +314,82 @@ FROM ranked_events
 WHERE rn = 1;
 ```
 
-Explanation: ROW_NUMBER() assigns a sequence to each row within its "group" (PARTITION BY order_id). By ordering by a timestamp (updated_at DESC), the latest record always gets rn = 1. 
+Explanation: 
+
+ROW_NUMBER() assigns a sequence to each row within its "group" (PARTITION BY order_id). By ordering by a timestamp (updated_at DESC), the latest record always gets rn = 1.
+
+**2. Period-over-Period (Growth) Analysis**
+
+Stakeholders frequently want to see how metrics (like revenue) compare to the previous day or month.
+
+```
+SELECT 
+    event_date,
+    daily_revenue,
+    LAG(daily_revenue) OVER (ORDER BY event_date) as prev_day_revenue,
+    (daily_revenue - LAG(daily_revenue) OVER (ORDER BY event_date)) / 
+        NULLIF(LAG(daily_revenue) OVER (ORDER BY event_date), 0) * 100 as growth_pct
+FROM daily_sales_summary;
+```
+
+Explanation:
+
+LAG() "peeks" at the previous row's value without needing a complex self-join. NULLIF is a safety check to prevent "division by zero" errors if the previous day had no revenue. 
+
+**3. The "Upsert" (Incremental Load)**
+
+When loading data into a target table, you often need to update existing records and insert new ones in one go. 
+
+```
+MERGE INTO production_users AS target
+USING staging_users AS source
+ON target.user_id = source.user_id
+WHEN MATCHED THEN
+    UPDATE SET target.email = source.email, target.last_login = source.last_login
+WHEN NOT MATCHED THEN
+    INSERT (user_id, email, last_login)
+    VALUES (source.user_id, source.email, source.last_login);
+```
+
+Explanation: 
+
+The MERGE statement (often called an Upsert) syncs a source and target table. It's much more efficient than running separate UPDATE and INSERT commands. 
+
+**4. Running Totals (Cumulative Metrics)**
+
+Useful for tracking progress toward a goal or building burn-down charts. 
+
+```
+SELECT 
+    order_date,
+    revenue,
+    SUM(revenue) OVER (
+        ORDER BY order_date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) as cumulative_revenue
+FROM orders;
+```
+
+Explanation: 
+
+Adding OVER (ORDER BY ...) to a SUM() tells SQL to treat it as a Running Total rather than a single grand total. The ROWS BETWEEN clause defines exactly which rows to include in the "running" window. 
+
+**5. Conditional Pivot (Flattening Data)**
+
+Modern apps often store key-value pairs (EAV model). Data engineers must "flatten" these for easier reporting. 
+
+```
+SELECT 
+    user_id,
+    MAX(CASE WHEN attribute_name = 'age' THEN attribute_value END) as age,
+    MAX(CASE WHEN attribute_name = 'city' THEN attribute_value END) as city
+FROM user_attributes
+GROUP BY user_id;
+```
+
+Explanation: 
+
+This pattern uses Conditional Aggregation. By wrapping a CASE statement inside MAX(), you transform multiple rows of attributes into a single, clean row per user. 
 
 <!-- Credits from: 
 https://www.google.com/, https://www.linkedin.com/posts/mukilanashokraj_dataengineering-sql-bigdata-activity-7430334953915281408-BykO#:~:text=2w,15. <br/>
