@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "name": "Alice Johnson",
+        "contact": {
+            "email": "alice@example.com",
+            "phone": "555-0101"
+        },
+        "address": {
+            "city": "New York",
+            "zip": "10001"
+        }
+    },
+    {
+        "id": 2,
+        "name": "Bob Smith",
+        "contact": {
+            "email": "bob@example.com",
+            "phone": "555-0202"
+        },
+        "address": {
+            "city": "Los Angeles",
+            "zip": "90001"
+        }
+    }
+]           
