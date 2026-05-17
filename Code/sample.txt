@@ -1,0 +1,2 @@
+Hi, I am Hriddhi.
+This is a sample file for python exercise.
